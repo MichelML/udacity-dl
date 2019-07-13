@@ -80,11 +80,13 @@ def create_lookup_tables(text):
     # TODO: Implement Function
     vocab_to_int = {}
     for idx, word in enumerate(text):
-        if word.lower() not in vocab_to_int:
-            vocab_to_int[word.lower()] = int(idx)
+        if word not in vocab_to_int:
+            vocab_to_int[word] = int(idx)
 
+    
     int_to_vocab = {v: k for k, v in vocab_to_int.items()}
 
+    print(len(vocab_to_int))
     # return tuple
     return (vocab_to_int, int_to_vocab)
 
@@ -251,7 +253,7 @@ def batch_data(words, sequence_length, batch_size):
     
     data = TensorDataset(torch.LongTensor(feature_tensors), torch.LongTensor(target_tensors))
     
-    return DataLoader(data, batch_size=batch_size)
+    return DataLoader(data, batch_size=batch_size, shuffle=True)
 
 # there is no test for this function, but you are encouraged to create
 # print statements and tests of your own
@@ -426,28 +428,27 @@ tests.test_rnn(RNN, train_on_gpu)
 def forward_back_prop(rnn, optimizer, criterion, inp, target, hidden):
     """
     Forward and backward propagation on the neural network
-    :param rnn: The PyTorch Module that holds the neural network
-    :param optimizer: The PyTorch optimizer for the neural network
+    :param decoder: The PyTorch Module that holds the neural network
+    :param decoder_optimizer: The PyTorch optimizer for the neural network
     :param criterion: The PyTorch loss function
     :param inp: A batch of input to the neural network
     :param target: The target output for the batch of input
     :return: The loss and the latest hidden state Tensor
-    """ 
-    hidden_new = tuple([x.data for x in hidden])
-    
-    rnn.zero_grad()        
+    """
+    # move data to GPU, if available
+    if train_on_gpu:
+        inp, target = inp.cuda(), target.cuda()
 
-    inputs = inp if not train_on_gpu else inp.cuda()
-    output, hidden_new = rnn(inputs, hidden_new)
-    
-    targ = target if not train_on_gpu else target.cuda()
-    loss = criterion(output, targ)
+    # perform backpropagation and optimization
+    h = tuple([x.data for x in hidden])
+    rnn.zero_grad()
+    output, h = rnn(inp, hidden)
+    loss = criterion(output, target)
     loss.backward()
-
     nn.utils.clip_grad_norm_(rnn.parameters(), 5)
     optimizer.step()
-
-    return loss.item(), hidden_new   
+        
+    return loss.item(), h  
 
 # Note that these tests aren't completely extensive.
 # they are here to act as general checks on the expected outputs of your functions
@@ -467,6 +468,13 @@ tests.test_forward_back_prop(RNN, forward_back_prop, train_on_gpu)
 
 # In[12]:
 
+
+def repackage_hidden(h):
+    """Wraps hidden states in new Tensors, to detach them from their history."""
+    if isinstance(h, torch.Tensor):
+        return h.detach()
+    else:
+        return tuple(repackage_hidden(v) for v in h)
 
 """
 DON'T MODIFY ANYTHING IN THIS CELL
@@ -491,6 +499,7 @@ def train_rnn(rnn, batch_size, optimizer, criterion, n_epochs, show_every_n_batc
                 break
             
             # forward, back prop
+            hidden = repackage_hidden(hidden)
             loss, hidden = forward_back_prop(rnn, optimizer, criterion, inputs, labels, hidden)          
             # record loss
             batch_losses.append(loss)
@@ -526,9 +535,9 @@ def train_rnn(rnn, batch_size, optimizer, criterion, n_epochs, show_every_n_batc
 
 # Data params
 # Sequence Length
-sequence_length = 5 # of words in a sequence
+sequence_length = 8 # of words in a sequence
 # Batch Size
-batch_size = 8 
+batch_size = 2 
 
 # data loader - do not change
 train_loader = batch_data(int_text, sequence_length, batch_size)
@@ -539,7 +548,7 @@ train_loader = batch_data(int_text, sequence_length, batch_size)
 
 # Training parameters
 # Number of Epochs
-num_epochs = 10
+num_epochs = 4
 # Learning Rate
 learning_rate = 0.001
 
@@ -549,9 +558,9 @@ vocab_size = len(vocab_to_int)
 # Output size
 output_size = vocab_size
 # Embedding Dimension
-embedding_dim = 200
+embedding_dim = 300
 # Hidden Dimension
-hidden_dim = 250
+hidden_dim = 512
 # Number of RNN Layers
 n_layers = 2
 
@@ -599,7 +608,7 @@ print('Model Trained and Saved')
 # 
 # After running the above training cell, your model will be saved by name, `trained_rnn`, and if you save your notebook progress, **you can pause here and come back to this code at another time**. You can resume your progress by running the next cell, which will load in our word:id dictionaries _and_ load in your saved model by name!
 
-# In[ ]:
+# In[16]:
 
 
 """
