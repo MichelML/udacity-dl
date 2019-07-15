@@ -617,4 +617,4 @@ MigrationBackup/
 
 # End of https://www.gitignore.io/api/vim,node,macos,python,firebase,visualstudio,jupyternotebook
 
-**/processed-celeba-small*
+**/processed_celeba_small*
