@@ -618,3 +618,6 @@ MigrationBackup/
 # End of https://www.gitignore.io/api/vim,node,macos,python,firebase,visualstudio,jupyternotebook
 
 **/processed_celeba_small*
+
+# data 
+sagemaker-deployment/data
