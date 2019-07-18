@@ -621,3 +621,4 @@ MigrationBackup/
 
 # data 
 sagemaker-deployment/data
+sagemaker-deployment/cache
